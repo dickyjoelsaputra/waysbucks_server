@@ -1,18 +1,22 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	dto "waysbucks/dto/result"
 	toppingdto "waysbucks/dto/topping"
 	"waysbucks/models"
 	"waysbucks/repositories"
 
+	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
+	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 )
-
-var path_file = "http://localhost:5000/uploads/"
 
 type handlersTopping struct {
 	ToppingRepository repositories.ToppingRepository
@@ -32,10 +36,6 @@ func (h *handlersTopping) FindToppings(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(response)
 	}
 
-	for i, p := range toppings {
-		toppings[i].Image = path_file + p.Image
-	}
-
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: "Success", Data: toppings}
 	json.NewEncoder(w).Encode(response)
@@ -53,8 +53,6 @@ func (h *handlersTopping) GetTopping(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(response)
 	}
 
-	topping.Image = path_file + topping.Image
-
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: "Success", Data: topping}
 	json.NewEncoder(w).Encode(response)
@@ -63,19 +61,50 @@ func (h *handlersTopping) GetTopping(w http.ResponseWriter, r *http.Request) {
 func (h *handlersTopping) CreateTopping(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	dataContex := r.Context().Value("dataFile") // add this code
-	filename := dataContex.(string)
+	dataContex := r.Context().Value("dataFile")
+	filepath := dataContex.(string)
 
 	price, _ := strconv.Atoi(r.FormValue("price"))
 	request := toppingdto.CreateTopping{
 		Title: r.FormValue("title"),
 		Price: price,
+		Image: filepath,
 	}
+
+	// VALIDASI
+	validation := validator.New()
+	err := validation.Struct(request)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// cloudineryy ===========================================
+	var ctx = context.Background()
+	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
+	var API_KEY = os.Getenv("API_KEY")
+	var API_SECRET = os.Getenv("API_SECRET")
+
+	fmt.Println(filepath)
+	fmt.Println(CLOUD_NAME, API_KEY, API_SECRET)
+
+	// Add your Cloudinary credentials ...
+	cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
+
+	// Upload file to Cloudinary ...
+	resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "waysbuckslagi"})
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	// cloudineryy ===========================================
 
 	topping := models.Topping{
 		Title: request.Title,
 		Price: request.Price,
-		Image: filename,
+		Image: resp.SecureURL,
 	}
 
 	data, err := h.ToppingRepository.CreateTopping(topping)

@@ -16,6 +16,8 @@ type TransactionRepository interface {
 	UpdateTransactions(status string, ID string) error
 	GetOneTransaction(ID string) (models.Transaction, error) // Declare GetOneTransaction repository method ...
 	GetDetailTransaction(ID int) (models.Transaction, error)
+
+	GetTransactionById(ID int64) (models.Transaction, error)
 }
 
 func RepositoryTransaction(db *gorm.DB) *repository {
@@ -89,6 +91,13 @@ func (r *repository) UpdateTransactions(status string, ID string) error {
 func (r *repository) GetOneTransaction(ID string) (models.Transaction, error) {
 	var transaction models.Transaction
 	err := r.db.Preload("Carts").Preload("Carts.Product").Preload("Carts.Topping").Preload("User").First(&transaction, "id = ?", ID).Error
+
+	return transaction, err
+}
+
+func (r *repository) GetTransactionById(ID int64) (models.Transaction, error) {
+	var transaction models.Transaction
+	err := r.db.First(&transaction,"id = ?", ID).Error
 
 	return transaction, err
 }

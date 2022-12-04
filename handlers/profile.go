@@ -1,14 +1,19 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	profiledto "waysbucks/dto/profile"
 	dto "waysbucks/dto/result"
 	"waysbucks/models"
 	"waysbucks/repositories"
 
+	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/gorilla/mux"
@@ -48,7 +53,6 @@ func (h *handlersProfile) GetProfile(w http.ResponseWriter, r *http.Request) {
 		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
 		json.NewEncoder(w).Encode(response)
 	}
-	profiles.Image = path_file + profiles.Image
 
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: "Success", Data: convertResponseProfile(profiles)}
@@ -103,14 +107,31 @@ func (h *handlersProfile) UpdateProfile(w http.ResponseWriter, r *http.Request) 
 	id := int(userInfo["id"].(float64))
 
 	dataContex := r.Context().Value("dataFile")
-	filename := dataContex.(string)
-
+	filepath := dataContex.(string)
 	postalcode, _ := strconv.Atoi(r.FormValue("postal_code"))
+
 	request := profiledto.UpdateProfile{
 		Address:    r.FormValue("address"),
 		PostalCode: postalcode,
-		Image:      filename,
+		Image:      filepath,
 	}
+
+	// cloudineryy ===========================================
+	var ctx = context.Background()
+	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
+	var API_KEY = os.Getenv("API_KEY")
+	var API_SECRET = os.Getenv("API_SECRET")
+
+	// Add your Cloudinary credentials ...
+	cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
+
+	// Upload file to Cloudinary ...
+	resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "waysbuckslagi"})
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	// cloudineryy ===========================================
 
 	profile, err := h.ProfileRepository.GetProfile(int(id))
 	if err != nil {
@@ -127,8 +148,8 @@ func (h *handlersProfile) UpdateProfile(w http.ResponseWriter, r *http.Request) 
 		profile.PostalCode = request.PostalCode
 	}
 
-	if filename != "false" {
-		profile.Image = filename
+	if filepath != "false" {
+		profile.Image = resp.SecureURL
 	}
 
 	data, err := h.ProfileRepository.UpdateProfile(profile)

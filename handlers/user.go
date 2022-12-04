@@ -51,7 +51,6 @@ func (h *handlersUser) GetUser(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(response)
 		return
 	}
-	user.Profile.Image = path_file + user.Profile.Image
 
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: "Success", Data: user}

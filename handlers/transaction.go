@@ -333,3 +333,36 @@ func SendMail(status string, transaction models.Transaction) {
 		log.Println("Mail sent! to " + transaction.User.Email)
 	}
 }
+
+func (h *handlerTransaction) UpdateTransactionById(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content type", "application/json")
+	
+	// id, _ := strconv.Atoi(mux.Vars(r)["id"])
+
+	request := new(transactiondto.CreateTransaction)
+	if err := json.NewDecoder(r.Body).Decode(request); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+	}
+
+	transaction, err := h.TransactionRepository.GetTransactionById(request.ID)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+	}
+
+	transaction.Status = request.Status
+
+	_, err = h.TransactionRepository.UpdateTransaction(transaction)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+	}
+
+	w.WriteHeader(http.StatusOK)
+	response := dto.SuccessResult{Code: "Success"}
+	json.NewEncoder(w).Encode(response)
+}
