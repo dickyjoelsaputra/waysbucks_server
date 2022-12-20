@@ -14,11 +14,11 @@ import (
 )
 
 func main() {
-		// env
-		errEnv := godotenv.Load()
-		if errEnv != nil {
-			panic("Failed to load env file")
-		}
+	// env
+	errEnv := godotenv.Load()
+	if errEnv != nil {
+		panic("Failed to load env file")
+	}
 
 	mysql.DatabaseInit()
 
@@ -34,11 +34,9 @@ func main() {
 
 	r.PathPrefix("/uploads").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 
-	// Modify 1 line this below code get port from env ...
 	var port = os.Getenv("PORT")
+	fmt.Println("server running localhost:" + port)
 
-	fmt.Println("Server Running on localhost:"+port)
-	http.ListenAndServe("localhost:"+port, handlers.CORS(AllowedHeaders, AllowedMethods, AllowedOrigins)(r))
+	// Embed the setup allowed in 2 parameter on this below code ...
+	http.ListenAndServe(":"+port, handlers.CORS(AllowedHeaders, AllowedMethods, AllowedOrigins)(r))
 }
-
-
